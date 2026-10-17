@@ -34,7 +34,7 @@
 - `real_contact`：接触面/遮挡/AO/边缘过渡必须可信
 - `no_fake_detail`：细节提升像真实材质细化，不乱加噪点划痕
 
-## 输出示例（Nano Banana 信封 content 片段）
+## 输出示例（GPT Image 2.5 信封 content 片段）
 
 ```json
 "3d_asset_integration": {

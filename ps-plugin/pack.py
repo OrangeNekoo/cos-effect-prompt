@@ -81,9 +81,9 @@ INSTALL_TXT = u"""COS 后期提示词生成器 — Photoshop 插件 v%(ver)s
 【首次使用要填自己的 API】
 
 插件不内置任何密钥，必须填你自己的：
-  · 打开面板 → 选一个服务商预设（自动填好接口地址）
+  · 打开面板 → 选 OpenAI 或自定义（填写 Responses API 根地址）
   · 填上你的 API Key
-  · 点「拉取模型」自动获取模型列表，选一个
+  · 填 Responses 驱动模型名，或点「拉取模型」自动获取列表
   · 点「保存并进入」
 
 不知道填什么，可以看 README.md 里的「常见服务商填写参考」表格。
@@ -100,8 +100,9 @@ INSTALL_TXT = u"""COS 后期提示词生成器 — Photoshop 插件 v%(ver)s
   · 继续优化     —— 基于上一版提新要求，输出完整新版本，可撤销
   · 知识库       —— 写死「必须遵守」的固定要求，每次生成自动带上
   · 学习库       —— 投喂你认可的提示词范例，让它模仿风格与写法
-  · 图生文       —— 导入图片反推提示词（需要支持看图的模型，需另配视觉模型）
-  · 多模型输出   —— Nano Banana / Midjourney / ComfyUI / Stable Diffusion / NovelAI
+  · 图生文       —— 导入图片反推 GPT Image 2.5 提示词（需要支持 Responses 图片输入的模型）
+  · 多模型输出   —— GPT Image 2.5 / Midjourney / ComfyUI / Stable Diffusion / NovelAI
+  · API 协议      —— OpenAI Responses（根地址、Key、驱动模型名均由用户填写）
   · 一键导出     —— 生成结果直接写入你设置的目录
 
 【开源】

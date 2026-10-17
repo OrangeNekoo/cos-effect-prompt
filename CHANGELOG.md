@@ -5,16 +5,22 @@
 | 项目 | 内容 |
 |---|---|
 | **项目名称** | cos-effect-prompt — COS 人像后期提示词生成 Skill |
-| **当前版本** | v1.2.0 |
-| **发布日期** | 2026-08-26 |
+| **当前版本** | v1.5.0 |
+| **发布日期** | 2026-10-17 |
 | **开源协议** | MIT License |
 | **代码仓库** | https://github.com/Couer869/cos-effect-prompt |
 
+## v1.5.0：GPT Image 2.5 与 Responses API 迁移
+
+- 默认提示词目标从 Nano Banana/Gemini 迁移为 GPT Image 2.5，保留 `nanobanana` 旧配置值兼容。
+- Photoshop 插件请求从 Chat Completions 迁移为 OpenAI Responses API：`instructions`、`input`、`input_text`、`input_image` 和 `output_text`。
+- 配置页支持填写 Responses API 根地址、API Key 和驱动模型名；视觉模型为空时自动回落到主模型。
+- 保留原有提示词、图生文、多轮优化、知识库、学习库、历史和导出工作流；插件当前仍输出提示词，不直接生成或导入图像。
+- 新增 `references/gpt-image.md`，并将 jsdom 冒烟测试改为可移植的 Responses 协议测试。
+
 ---
 
-## 一、项目概述
-
-本项目是一个面向 COS（cosplay）人像后期的提示词生成 Skill。它接收用户的自然语言需求，自动组装为符合目标图像模型语法的专业提示词指令，并支持以标准化预设格式导出、供图像处理插件直接导入使用。
+## 一、项目概述它接收用户的自然语言需求，自动组装为符合目标图像模型语法的专业提示词指令，并支持以标准化预设格式导出、供图像处理插件直接导入使用。
 
 核心能力：特效合成、人像精修（修脸 / 头发 / 身材 / 服装 / 瑕疵）、3D 素材整合、光影重塑、多模型适配、反推、风格与电影风格仿制，且内置透视一致性、光影一致性等硬性约束。
 

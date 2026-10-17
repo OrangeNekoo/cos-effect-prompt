@@ -1,14 +1,14 @@
 ---
 name: cos-effect-prompt
 description: >
-  为 COS 照片（cosplay 角色照 / 写真）生成专业级 JSON 后期指令，可直接配合 Nano Banana
-  （Gemini 图像模型）使用。用户在给自己的角色照做后期时使用——加特效（魔法阵、火焰、雷电、
+  为 COS 照片（cosplay 角色照 / 写真）生成专业级 JSON 后期指令，可直接配合 GPT Image 2.5
+  （OpenAI GPT Image 图像模型）使用。用户在给自己的角色照做后期时使用——加特效（魔法阵、火焰、雷电、
   冰霜、翅膀、光环、圣光、粒子、辉光、霓虹、雨、雪、花瓣、赛博街景）、做综合修图（身体塑形
   液化、服装焕新、裙摆/披风风动效果）都在范围内。本技能会输出一份结构化的 JSON 指令：
   保底规则（构图/脸/姿势不变）+ 检测分析 + 按需启用的处理模块 + 约束与光影噪点一致性。
   请务必在用户提到「给照片加特效」「COS 后期」「P 图」「修图」「加魔法阵/火焰/光环/翅膀」
   「液化/瘦身/塑形」「裙子飘起来/加风效」「衣服太皱了」等任何 COS 照片后期需求时使用本技能，
-  即使他们没有说出「提示词」或「指令」——用户提到 Nano Banana / 香蕉模型 / Gemini 图像 时也务必使用。
+  即使他们没有说出「提示词」或「指令」——用户提到 GPT Image 2.5 / GPT Image / OpenAI 图像模型 / Nano Banana / 香蕉模型 / Gemini 图像 时也务必使用。
   用户**给出照片**并问「这个效果怎么做」「分析这张图的后期」「这张图用了什么修图/特效」
   「照着这张图做」「反推一下提示词」时，进入**反推模式**：观察照片、识别已有后期处理、
   反推出可复现的 JSON 指令。
@@ -24,7 +24,7 @@ description: >
   用户提到「ComfyUI / Comfy / Stable Diffusion / SD / WebUI / 采样器 / CFG / 步数 / LoRA /
   负面提示词 / Midjourney / --ar / NovelAI / 二次元 tag」等**模型或参数**时，**先辨别目标模型**，
   再用该模型最合适的格式生成提示词（ComfyUI 用 tag+权重+参数，MJ 用自然语言+参数，
-  NovelAI 用 Danbooru 标签）；用户没说模型时默认 Nano Banana。
+  NovelAI 用 Danbooru 标签）；用户没说模型时默认 GPT Image 2.5。
   用户要「MJ 提示词 / Midjourney 生图 / MJ 文生图」时，按内置 **MJ 提示词指南**
   （`references/midjourney.md`：7-Element 框架 + 参数全表 + 模板 + 默认偏好 + 垃圾词黑名单 + EVA 约定）
   输出可直接粘贴 `/imagine` 的提示词。
@@ -49,13 +49,13 @@ description: >
 
 # COS 后期提示词生成
 
-为一个目标服务：**把用户"想怎么处理这张 COS 照片"的模糊想法，变成一份 Nano Banana 能一次理解并执行的 JSON 后期指令**。
+为一个目标服务：**把用户"想怎么处理这张 COS 照片"的模糊想法，变成一份 GPT Image 2.5 能理解并执行的 JSON 后期指令**。
 
-Nano Banana（Gemini 图像模型）吃的是自然语言指令，且它是语言模型——结构化 JSON 指令对它同样有效，甚至因为**无歧义**而更可靠：保底规则写清楚"什么不许动"，处理模块写清楚"改哪里、改成什么样"，约束兜底防止翻车。本技能的一切围绕"组装这份 JSON"展开。
+GPT Image 2.5 适合具体、可观察的自然语言图像编辑指令。结构化 JSON 指令同样有效，且因为**无歧义**更可靠：保底规则写清楚"什么不许动"，处理模块写清楚"改哪里、改成什么样"，约束兜底防止翻车。本技能的一切围绕**组装这份 JSON**展开。
 
 ## 输出：插件预设信封（核心交付）
 
-> 本节是 **Nano Banana（默认）** 的输出格式。若第 0 步辨别的模型是 ComfyUI / Midjourney / NovelAI，按 `references/models.md` 的对应格式输出，不套本信封。
+> 本节是 **GPT Image 2.5（默认；Nano Banana/Gemini 为历史兼容称呼）** 的输出格式。若第 0 步辨别的模型是 ComfyUI / Midjourney / NovelAI，按 `references/models.md` 的对应格式输出，不套本信封。
 
 **输出一份可直接导入图像处理插件的预设 JSON**，信封结构如下：
 
@@ -76,7 +76,7 @@ Nano Banana（Gemini 图像模型）吃的是自然语言指令，且它是语�
 }
 ```
 
-- **`content`**：组装好的指令 JSON（固定骨架 + 按需模块 + 约束 + 光影一致）**整体序列化为字符串**，内部引号转义为 `\"`。这份字符串就是可直接粘贴给 Nano Banana 的指令。
+- **`content`**：组装好的指令 JSON（固定骨架 + 按需模块 + 约束 + 光影一致）**整体序列化为字符串**，内部引号转义为 `\"`。这份字符串可与原图一起提交给 GPT Image 2.5。
 - **`params`**：**可调参数控件**，插件据此渲染滑块。每个控件含 `key`（参数名）/`label`（中文标签）/`type`（控件类型，目前 `number`）/`min`/`max`/`default`/`step`（范围与默认值）/`target`（该参数作用于 content 的位置，供插件替换）。
 - **`category`**：按**主要效果**映射英文分类（见下方分类表）
 - **`title`**：简短中文标题，概括主要操作（如"脚下加金色魔法阵""旗袍去白色打底"）
@@ -122,13 +122,13 @@ Nano Banana（Gemini 图像模型）吃的是自然语言指令，且它是语�
 
 **先确定这条提示词给哪个模型用**，再决定输出格式（详见 `references/models.md`）：
 
-- 用户**明说**：ComfyUI / SD / Stable Diffusion / WebUI → `comfyui`；MJ / Midjourney → `midjourney`；NovelAI / 二次元 tag → `novelai`；没提 → `nanobanana`
+- 用户**明说**：GPT Image 2.5 / GPT Image / OpenAI 图像模型 / Nano Banana / Gemini 图像 → `gptimage`；ComfyUI / SD / Stable Diffusion / WebUI → `comfyui`；MJ / Midjourney → `midjourney`；NovelAI / 二次元 tag → `novelai`；没提 → `gptimage`
 - **术语暗示**：采样器 / CFG / 步数 / LoRA / 负面提示词 / checkpoint → `comfyui`；`--ar` / `--v` / `--stylize` → `midjourney`；tag / 标签 / Danbooru → `novelai`
-- **都没提** → 默认 `nanobanana`（插件预设信封）
-- 拿不准 → 问一次："这条提示词给 ComfyUI / Midjourney / NovelAI 还是 Nano Banana？"
+- **都没提** → 默认 `gptimage`（GPT Image 2.5 插件预设信封）
+- 拿不准 → 问一次："这条提示词给 GPT Image 2.5 / ComfyUI / Midjourney / NovelAI 哪个模型？"
 
 输出格式随模型变化：
-- `nanobanana` → 插件预设信封（见「输出」章节）
+- `gptimage` → GPT Image 2.5 插件预设信封（见「输出」章节）
 - `comfyui` → 正向 tag + 负向 tag + 参数（CFG / 步数 / 采样器），特效 tag 对照见 `models.md`
 - `midjourney` → 自然语言 + `--参数`（**提示词写法见 `references/midjourney.md`**：7-Element 框架、参数全表、模板、默认偏好、垃圾词黑名单、EVA 约定；风格措辞见 `mj-style.md`）
 - `novelai` → Danbooru 标签
@@ -287,7 +287,7 @@ Nano Banana（Gemini 图像模型）吃的是自然语言指令，且它是语�
 
 触发：用户粘贴提示词并说"存到参考库 / 保存这个 / 我喜欢这个"。
 
-1. **判定来源模型**：看格式——`--参数` → MJ；逗号 tag / 权重 `(x:1.2)` → SD/ComfyUI；纯标签 → NovelAI；自然语言 → Nano Banana / MJ
+1. **判定来源模型**：看格式——`--参数` → MJ；逗号 tag / 权重 `(x:1.2)` → SD/ComfyUI；纯标签 → NovelAI；自然语言 → GPT Image 2.5 / MJ
 2. **泛化分析**：提炼结构（如 [主体]+[场景]+[光线色调]+[质感]+[参数]）、亮点、可迁移写法
 3. **写入** `references/user-prompts.md`：按条目模板（参考名 / 来源模型 / 用途标签 / 原文 / 泛化分析 / 可复用要素），**征得用户确认后**追加
 4. 告知已存入，可随时用"参考库里的 XX"调用
@@ -297,7 +297,7 @@ Nano Banana（Gemini 图像模型）吃的是自然语言指令，且它是语�
 生成提示词前，检查 `references/user-prompts.md`：
 - 用户明确说"用参考库的 XX / 按之前存的那个" → 直接读对应条目
 - 当前需求与库里某条目的**用途标签匹配** → 参考该条目的结构与措辞
-- 参考后**按目标模型格式适配**（Nano Banana 信封 / ComfyUI tag / MJ 自然语言），不照抄原格式；借鉴的是结构与可复用要素，注入的是当前需求
+- 参考后**按目标模型格式适配**（GPT Image 2.5 信封 / ComfyUI tag / MJ 自然语言），不照抄原格式；借鉴的是结构与可复用要素，注入的是当前需求
 
 ### 泛化分析模式（批量总结）
 
@@ -336,7 +336,7 @@ Nano Banana（Gemini 图像模型）吃的是自然语言指令，且它是语�
 - `clothing_refresh` → 裙摆 / 披风 / 飘带的飘动方向以红笔箭头为准
 - `special_effects` → 有方向的特效（火焰拖尾 / 风刃 / 光流）可用红笔指定方向
 
-**模型差异**：Nano Banana 能看到照片上的红笔标记 → **直接引用**；ComfyUI / Midjourney / NovelAI 通常看不到标注图 → 把方向**翻译成文字 / tag** 描述（用户口述方向即可，具体写法见 `references/models.md` 画笔引导章节）。
+**模型差异**：GPT Image 2.5 通过 Responses 的 `input_image` 能看到照片和标注 → **直接引用**；ComfyUI / Midjourney / NovelAI 通常看不到标注图 → 把方向**翻译成文字 / tag** 描述（用户口述方向即可，具体写法见 `references/models.md` 画笔引导章节）。
 
 **注意事项**：
 - 明确红笔标记是**方向指示**，不是要画进成品的线条，成片不得残留
@@ -456,4 +456,5 @@ Nano Banana（Gemini 图像模型）吃的是自然语言指令，且它是语�
 - 已学习风格库（新风格入库处）→ `references/styles-learned.md`
 - 用户参考提示词库（存参考 / 泛化分析 / 生成时参考）→ `references/user-prompts.md`
 - 完整 JSON 骨架 → `references/template.json`
-- Nano Banana 编辑原理与摄影术语 → `references/nano-banana.md`
+- GPT Image 2.5 编辑原理与摄影术语 → `references/gpt-image.md`
+- Nano Banana 历史兼容说明 → `references/nano-banana.md`

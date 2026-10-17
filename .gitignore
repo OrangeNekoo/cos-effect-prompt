@@ -7,8 +7,15 @@ iteration-*/
 Thumbs.db
 *.log
 
+# 本地依赖与工具状态
+node_modules/
+.zcode/*
+!.zcode/
+!.zcode/skills/
+!.zcode/skills/**
+.zcode/skills/**/.DS_Store
+
 # Office 临时文件
 ~\$*.docx
 
-# Word 文档（本地生成，不入库）
 *.docx

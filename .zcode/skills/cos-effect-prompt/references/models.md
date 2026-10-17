@@ -1,0 +1,182 @@
+# 多模型适配知识库
+
+用户要提示词时，**先辨别目标模型**，再用该模型最合适的格式输出。辨别与格式规则如下。
+
+## 一、模型注册表
+
+| 模型 | 识别关键词（用户怎么说） | 输出格式 |
+|---|---|---|
+| **GPT Image 2.5**（默认） | 没提模型 / GPT Image 2.5 / GPT Image / OpenAI 图像模型 / Nano Banana / 香蕉 / Gemini 图像 | GPT Image 2.5 插件预设信封（JSON，见 SKILL.md） |
+| **ComfyUI / Stable Diffusion** | comfyui / comfy / stable diffusion / SD / WebUI / A1111 / 采样器 / CFG / 步数 / LoRA / 负面提示词 / checkpoint / 负面词 | SD 风格：正向 tag + 负向 tag + 参数 |
+| **Midjourney** | mj / midjourney / --ar / --v / --stylize / --sref / MJ 风格 | 自然语言 + `--参数` |
+| **NovelAI** | novelai / nagi / danbooru / 二次元 tag / 标签 | Danbooru 标签（逗号分隔） |
+
+**默认**：用户没说模型 → 一律按 GPT Image 2.5 预设信封格式。Nano Banana/Gemini 是旧版兼容称呼，遇到这些词仍按 GPT Image 2.5 的自然语言编辑规则输出。
+
+## 二、GPT Image 2.5 输出格式与编辑规则
+
+GPT Image 2.5 适合“原图 + 具体编辑要求”的自然语言指令。优先描述可观察的目标结果，并明确保持人物身份、构图、姿势、服装版型、透视和原始光线。不要把 ComfyUI 的采样器、CFG、LoRA 或负面词表混入 GPT Image 提示词。
+
+插件默认输出的信封结构仍是 `id/title/content/params/category`，其中 `content` 是结构化编辑指令的 JSON 字符串。使用时把 `content` 与原图一起提交给图像模型；信封本身不是 Responses API 请求体。
+
+推荐的 GPT Image 2.5 编辑提示词包含：
+
+- **目标动作**：添加、移除、替换或重塑什么。
+- **作用区域**：明确位置、范围和前景/中景/背景关系。
+- **视觉结果**：颜色、材质、边缘、透明度、运动方向和细节。
+- **一致性约束**：保持面部、姿势、服装身份、镜头和透视不变。
+- **融合要求**：新元素的光影、反射、景深、噪点与原图一致。
+
+### Responses API 的接口边界
+
+插件的 Photoshop 版本通过用户填写的 **Responses API 根地址、API Key 和驱动模型名**调用文本/视觉模型来生成这份提示词。请求使用 `POST <根地址>/responses`，系统规则放在 `instructions`，文字历史放在 `input`，图片输入使用 `input_image`。GPT Image 2.5 是提示词的目标图像模型，不是本插件默认请求的顶层驱动模型；本插件当前不直接调用 `image_generation` 工具或把生成图片写回 Photoshop。
+
+### GPT Image 2.5 示例
+
+```text
+编辑这张 COS 人像照片：只在人物脚下地面添加一个金色发光魔法阵。魔法阵贴合地面原有透视，近处略宽、远处略窄，符文清晰但不过曝；金色光线自然反射到鞋面和腿部。保持人物的脸、发型、服装、动作、构图和背景不变，不要残留编辑标记。
+```
+
+## 三、ComfyUI / Stable Diffusion 输出格式
+
+```json
+{
+  "model": "comfyui",
+  "positive_prompt": "masterpiece, best quality, 1girl, solo, white dress, ...特效tags...",
+  "negative_prompt": "bad anatomy, extra fingers, deformed hands, worst quality, low quality, blurry",
+  "params": {
+    "steps": 28,
+    "cfg": 7.0,
+    "sampler": "dpmpp_2m",
+    "scheduler": "karras",
+    "clip_skip": 2,
+    "seed": null,
+    "size": "1024x1024"
+  }
+}
+```
+
+### tag 语法
+- 逗号分隔；权重 `(tag:1.2)` 加强、`(tag:0.8)` 减弱、`[tag:0.9]` 渐弱
+- 负面词照抄到 `negative_prompt`（构图/人物保护写进负面：`bad perspective`、`distorted`、`extra person`）
+- 特效/元素用英文 tag，从下表「特效 tag 对照」取
+
+### 特效 tag 对照（effects.md 中文描述 → SD tag）
+
+| effects.md 特效 | SD tag 示例 |
+|---|---|
+| 魔法阵 | `magic circle, glowing runes, golden light, intricate geometric pattern, luminous, on ground, perspective` |
+| 火焰 | `fire, flames, embers, glowing, warm lighting, orange and gold` |
+| 雷电 | `lightning, electric arcs, blue purple glow, sparks, energy` |
+| 冰霜 | `ice crystals, frost, icy blue, frozen, cold light, crystalline` |
+| 翅膀 | `white feathered wings, angel wings, spread wings, glowing edges` |
+| 光环 | `holy halo, golden ring, soft glow, floating above head` |
+| 粒子/光尘 | `glowing particles, sparkles, floating lights, bokeh, dreamy` |
+| 霓虹 | `neon lights, cyberpunk, glowing signs, wet street reflection, purple blue` |
+| 雨天 | `rain, rain drops, wet ground, reflections, cinematic` |
+| 花瓣 | `falling petals, cherry blossoms, pink petals, dreamy` |
+| 赛博街景 | `cyberpunk city, neon signs, skyscrapers, rainy street, holograms, night` |
+
+其他特效按此规律把中文描述转成英文 tag：主体物 + 颜色/材质/光效 + 位置/关系。
+
+### 人物保护（对应 base_rules / constraints）
+- 正面加：`photorealistic` / `detailed face` / `sharp focus` / `perfect anatomy`
+- 负面加：`bad anatomy`、`extra fingers`、`deformed`、`distorted`、`extra person`、`bad perspective`
+- 透视一致 → 负面 `bad perspective, wrong perspective`；正面可加 `correct perspective, proper vanishing point`
+
+### ComfyUI 进阶写法（ControlNet / LoRA / Embedding）
+
+用户提到「ControlNet / 控制网 / LORA / LoRA / embedding / 姿势控制 / 深度图」时启用。这些是 ComfyUI 的重要进阶能力，提示词要配合它们一起写。
+
+**LoRA / Embedding 语法**：
+- LoRA：`<lora:模型名:权重>`，如 `<lora:add_detail:0.8>`、`<lora:cosplay_style:0.6>`
+- Embedding：`embedding:embedding名` 或 `(embedding:名称:0.8)`
+- 用到 LoRA 就在提示词里声明，权重建议 0.5-0.8
+
+**ControlNet（精确控制姿势 / 构图 / 透视 / 结构）**：
+ControlNet 是控制图（预处理器），不是提示词；但提示词要配合描述。常见控制类型与配合写法：
+
+| 控制类型 | 作用 | 提示词配合写法 |
+|---|---|---|
+| OpenPose | 锁定人物姿势骨架 | 描述姿势 + "严格保持图中姿势骨架" |
+| Depth 深度 | 保持空间纵深与透视 | "保持透视与纵深关系"（配合透视一致硬规则） |
+| Lineart / Canny | 锁定线稿 / 边缘结构 | "保持边缘与线条结构" |
+| Normal 法线 | 保持体积与凹凸 | "保持体积与材质凹凸关系" |
+| IPAdapter | 参考图像风格 / 构图 | 描述参考风格 + "参考附图的风格与构图" |
+| Seg 语义分割 | 锁定物体区域布局 | "保持画面元素布局与区域" |
+
+**配合原则**：提示词负责"画面内容与风格"，ControlNet 负责"结构控制"。**姿势、透视这类硬约束在 ComfyUI 里优先交给 ControlNet（OpenPose / Depth）**，比纯提示词可靠得多。生成时提示：`使用 OpenPose 锁定姿势、Depth 保持透视`。
+
+**负面词库扩充**（追加到 negative_prompt）：
+`bad anatomy, extra fingers, deformed hands, missing fingers, extra limbs, disfigured, malformed, bad proportions, wrong perspective, bad perspective, duplicate, clone, watermark, text, logo`
+
+## 三、Midjourney 输出格式
+
+自然语言描述 + `--参数`（MJ 具体风格措辞见 `mj-style.md`）。
+
+**默认风格（用户偏好）**：用户没说风格时，默认「**写实 3DCG**」——`high-quality 3D CGI render, realistic PBR skin and fabric, subsurface scattering, soft volumetric light`。用户指定二次元/水墨/电影感等其他风格再切换。
+
+**默认构图与光学（用户偏好）**：MJ 提示词默认带入**电影级构图与光学**——① 前景遮挡（虚化前景元素做画框式取景）；② 远 / 中 / 近三层景别结合（纵深构图）；③ 电影级构图（三分法/引导线）；④ **镜头焦段默认 35mm + 大光圈 f/1.4**；⑤ 锐利焦点 + 奶油虚化光斑（creamy bokeh）。
+
+**默认取景（用户偏好）**：人物默认**非半身照**（全身 / 宽松取景，含完整身姿与空间留白），避免裁成半身。
+
+**可改属性**：以上 MJ 默认均为可调参数——镜头焦段（35/50/85/135mm…）、光圈（f/1.4-f/8）、取景（全身 / 七分身 / 半身 / 特写）、前景元素、景别层次等。用户需求里改了就用改的值。
+
+```
+全身照，脚下金色发光魔法阵，符文旋转，3D CGI 渲染，写实材质，体积光氛围，
+前景梅花虚化做画框，梅花林为近景、女子为中景、古寺为远景，电影级三分法构图，
+35mm f/1.4 大光圈，锐利对焦人物，背景奶油虚化光斑 --ar 3:4 --v 6 --stylize 200
+```
+
+常用参数：`--ar`（画幅）、`--v`（版本）、`--s` / `--stylize`（风格化）、`--no`（排除）、`--sref`（风格参考）。
+人物保护转成正向描述："保持人物五官与服装细节清晰一致，不改变姿态"。
+
+## 四、NovelAI 输出格式
+
+Danbooru 标签（逗号分隔），加权重：
+
+```
+1girl, solo, white dress, golden magic circle, glowing, luminous runes, fantasy, masterpiece, best quality
+```
+
+负面（NovelAI 固定）：`lowres, bad anatomy, bad hands, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry`
+
+## 五、辨别流程（第 0 步）
+
+1. 用户**明说模型** → 直接用该模型
+2. 用户**没说** → 找术语暗示（采样器/CFG/步数/LoRA → ComfyUI；--ar/--v → MJ；tag/标签 → NovelAI）
+3. **都没有** → 默认 GPT Image 2.5
+
+辨别后有疑问 → 问一次："这条提示词是给 GPT Image 2.5 / ComfyUI / Midjourney / NovelAI 哪个模型？"
+
+## 六、画笔引导在各模型的表达
+
+画笔引导（红笔箭头/轨迹）怎么写进提示词，取决于**该模型能否看到标注图**：
+
+| 模型 | 能否看到红笔标注 | 表达方式 |
+|---|---|---|
+| **GPT Image 2.5** | ✅ Responses 图片输入可携带原图与标注 | 直接引用："以照片中红色箭头方向为基准"（见 SKILL.md 画笔引导章节） |
+| **ComfyUI / SD** | ❌ 通常看不到 | 用 tag / 描述词表达方向与动态 |
+| **Midjourney** | ❌ | 自然语言描述方向 |
+| **NovelAI** | ❌ | 方向性标签 + 动态描述 |
+
+> 原则：能看到标注的模型直接引用红笔；看不到的模型，把方向**翻译成文字/tag**（用户口述方向即可，如"风往画面左边吹"）。
+
+### ComfyUI / SD 表达
+- 方向 + 动态 tag：`wind, flowing hair, dress flutter, motion, dynamic`，方向用修饰词（`to the left` / `to the right` / `diagonal wind`）
+- 强调权重：`(wind:1.3), (flowing hair:1.2)`
+- 负面：`stiff hair, static hair, frozen motion, no motion`
+- 说明：tag 难以精确控制方向，更精确的方向需要 **ControlNet + 引导图**；提示词里给出方向性描述即可
+
+### Midjourney 表达
+自然语言直接写方向：
+```
+风从画面右侧吹向左侧，黑色风衣衣摆与发丝向左侧飘动，动态感 --ar 3:4 --v 6
+```
+
+### NovelAI 表达
+Danbooru 标签 + 动态描述：
+```
+1girl, wind, flowing hair, dress flutter, dynamic pose, motion lines, masterpiece, best quality
+```
+（方向精确控制弱，靠 `wind` + `flowing` + `motion lines` 表达动态）

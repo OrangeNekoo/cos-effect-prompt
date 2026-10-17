@@ -137,7 +137,7 @@ function mimeOf(filename) {
  * ============================================================ */
 
 const SKILL_CORE = `
-你是「Cosplay 人像后期综合处理师」，为用户的 COS 照片生成专业级后期提示词。
+你是「Cosplay 人像后期综合处理师」，为用户的 COS 照片生成适用于 GPT Image 2.5 的专业级后期提示词。
 
 【默认风格与属性 —— 用户未明确指定时一律带入】
 - 风格：写实 3DCG（high-quality 3D CGI render, realistic PBR materials, subsurface scattering, volumetric light）
@@ -178,9 +178,9 @@ const SKILL_CORE = `
 - 参数排除：--no Unit-01, purple, green（MJ）或负面词（SD）
 `;
 
-const FORMAT_NANOBANANA = `
-【输出格式：Nano Banana 插件预设信封】
-输出一份可直接导入插件的 JSON，结构：
+const FORMAT_GPTIMAGE = `
+【输出格式：GPT Image 2.5 插件预设信封】
+输出一份可直接用于 GPT Image 2.5 图像编辑的 JSON，结构：
 {
   "id": "f_<category>_<英文kebab-slug>",
   "title": "简短中文标题",
@@ -200,6 +200,7 @@ content 内的指令 JSON 结构：{ "role", "base_rules", "detection", 按需�
   preserve_lighting_global / preserve_global_hsl_gamma / preserve_perspective / no_scale_rotate_translate
 - integration 固定含：light_match / noise_match / perspective_match
 只输出你需要的模块，没有的键不输出。content 的引号必须转义（\\"）。
+- GPT Image 2.5 适合自然语言的具体编辑要求；JSON 只是插件交付信封，最终仍需和原图一起提交给图像模型。
 `;
 
 const FORMAT_MJ = `
@@ -239,7 +240,7 @@ function formatFor(target) {
   if (target === "midjourney") return FORMAT_MJ;
   if (target === "comfyui") return FORMAT_COMFYUI;
   if (target === "novelai") return FORMAT_NOVELAI;
-  return FORMAT_NANOBANANA;
+  return FORMAT_GPTIMAGE;
 }
 
 /* 知识库：用户写死的「固定要求」，优先级最高 */
@@ -332,17 +333,10 @@ const MAX_LEARN = 50;
 const GITHUB_URL = "https://github.com/Couer869/cos-effect-prompt";
 const DOUYIN_URL = "https://v.douyin.com/dNeL4w9CUBs/";
 
-/* 服务商预设：选中后自动填入接口地址与常用模型名 */
+/* 服务商预设：选中后自动填入 Responses 根地址与驱动模型名 */
 const PROVIDERS = {
-  deepseek:    { url: "https://api.deepseek.com/v1",                      model: "deepseek-chat" },
-  qwen:        { url: "https://dashscope.aliyuncs.com/compatible-mode/v1", model: "qwen-plus" },
-  kimi:        { url: "https://api.moonshot.cn/v1",                       model: "moonshot-v1-8k" },
-  zhipu:       { url: "https://open.bigmodel.cn/api/paas/v4",             model: "glm-4-plus" },
-  siliconflow: { url: "https://api.siliconflow.cn/v1",                    model: "deepseek-ai/DeepSeek-V3" },
-  minimax:     { url: "https://api.minimax.chat/v1",                      model: "abab6.5s-chat" },
-  openai:      { url: "https://api.openai.com/v1",                        model: "gpt-4o" },
-  openrouter:  { url: "https://openrouter.ai/api/v1",                     model: "openai/gpt-4o" },
-  custom:      { url: "",                                                 model: "" }
+  openai: { url: "https://api.openai.com/v1", model: "gpt-4.1" },
+  custom: { url: "", model: "" }
 };
 
 function loadConfig() {
@@ -450,9 +444,13 @@ function buildOptList(containerId, items, onPick) {
   });
 }
 
+function normalizeTarget(target) {
+  return target === "nanobanana" || !target ? "gptimage" : target;
+}
+
 function currentTarget() {
   const mainVisible = !document.getElementById("viewMain").classList.contains("hidden");
-  return getOptValue(mainVisible ? "targetModelMain" : "targetModel") || "nanobanana";
+  return normalizeTarget(getOptValue(mainVisible ? "targetModelMain" : "targetModel"));
 }
 
 function readConfig() {
@@ -476,9 +474,9 @@ function fillConfigForm(cfg) {
   document.getElementById("visionApiKey").value = cfg.visionApiKey || "";
   document.getElementById("visionModel").value = cfg.visionModel || "";
   document.getElementById("exportDir").value = cfg.exportDir || "";
-  setOptValue("targetModel", cfg.targetModel || "nanobanana");
-  setOptValue("targetModelMain", cfg.targetModel || "nanobanana");
-  setOptValue("targetModelImg", cfg.targetModel || "nanobanana");
+  setOptValue("targetModel", normalizeTarget(cfg.targetModel));
+  setOptValue("targetModelMain", normalizeTarget(cfg.targetModel));
+  setOptValue("targetModelImg", normalizeTarget(cfg.targetModel));
 }
 
 /* 视觉模型配置：没单独配就回落到主配置 */
@@ -487,13 +485,13 @@ function visionConfig() {
   return {
     baseUrl: (c.visionBaseUrl || c.baseUrl || "").trim(),
     apiKey: (c.visionApiKey || c.apiKey || "").trim(),
-    model: (c.visionModel || "").trim()
+    model: (c.visionModel || c.model || "").trim()
   };
 }
 
 function updateCfgSummary() {
   const cfg = loadConfig();
-  const names = { nanobanana: "Nano Banana", midjourney: "Midjourney", comfyui: "ComfyUI", novelai: "NovelAI" };
+  const names = { gptimage: "GPT Image 2.5", nanobanana: "GPT Image 2.5", midjourney: "Midjourney", comfyui: "ComfyUI", novelai: "NovelAI" };
   const t = currentTarget();
   const marks = [];
   if (loadKB().trim()) marks.push("知识库");
@@ -646,7 +644,8 @@ function labelOf(target) {
   if (target === "midjourney") return "MJ";
   if (target === "comfyui") return "Comfy";
   if (target === "novelai") return "NAI";
-  return "NanoBanana";
+  if (target === "gptimage" || target === "nanobanana") return "GPT Image 2.5";
+  return target || "GPT Image 2.5";
 }
 
 function nowStr() {
@@ -729,7 +728,7 @@ function renderHistory() {
       setOutput(item.result || "");
       if (item.request) document.getElementById("request").value = item.request;
       if (item.target) {
-        setOptValue("targetModelMain", item.target);
+        setOptValue("targetModelMain", normalizeTarget(item.target));
         updateCfgSummary();
       }
       setStatus("已载入历史记录", "ok");
@@ -907,14 +906,14 @@ async function runImageToText() {
   const ask = document.getElementById("imgPrompt").value.trim() ||
     "反推出能复现这张图的提示词，写清构图、光线、镜头与画风。";
 
-  const target = getOptValue("targetModelImg") || "nanobanana";
+  const target = normalizeTarget(getOptValue("targetModelImg"));
   const system = buildVisionSystemPrompt(target, loadKB());
 
   const msgs = [{
     role: "user",
     content: [
-      { type: "text", text: ask },
-      { type: "image_url", image_url: { url: pickedImage.dataUrl } }
+      { type: "input_text", text: ask },
+      { type: "input_image", image_url: pickedImage.dataUrl, detail: "auto" }
     ]
   }];
 
@@ -961,7 +960,7 @@ function buildFilename(target, content) {
   const ts = d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()) + "-" +
              p(d.getHours()) + p(d.getMinutes()) + p(d.getSeconds());
 
-  if (target === "nanobanana") {
+  if (target === "gptimage" || target === "nanobanana") {
     try {
       const obj = JSON.parse(content);
       if (obj && obj.id) return obj.id + ".json";
@@ -1045,7 +1044,7 @@ async function fetchModelsFromAPI(opt) {
   hint.textContent = "正在拉取模型列表…";
 
   try {
-    const res = await fetch(base + "/models", {
+    const res = await fetch(apiEndpoint(base, "models"), {
       headers: { "Authorization": "Bearer " + key }
     });
     const raw = await res.text();
@@ -1091,24 +1090,108 @@ async function fetchModelsFromAPI(opt) {
   }
 }
 
-/* ============================================================
- * 八、调用 API（支持多轮对话）
- * ============================================================ */
+/* 将用户填写的 API 根地址规范化。允许误填 /responses、/models 或旧的 /chat/completions 后缀。 */
+function apiRoot(value) {
+  return String(value || "").trim().replace(/\/+$/, "")
+    .replace(/\/(?:responses|models|chat\/completions)$/i, "");
+}
 
-let messages = [];      // 对话历史（不含 system）
-let outputStack = [];   // 每轮结果，用于撤销
+function apiEndpoint(value, resource) {
+  const root = apiRoot(value);
+  return root ? root + "/" + resource : "";
+}
 
-async function callLLM(cfg, msgs, systemPrompt, temperature) {
-  const base = cfg.baseUrl.replace(/\/+$/, "");
-  const url = /\/chat\/completions$/.test(base) ? base : base + "/chat/completions";
+function responsesTextType(role) {
+  return role === "assistant" ? "output_text" : "input_text";
+}
 
-  const sys = systemPrompt || buildSystemPrompt(cfg.targetModel, loadKB());
+/* 把旧的本地对话消息转换成 Responses input 项。保留旧格式读取能力，
+ * 但所有网络请求都只发送 Responses 的文本/图片结构。 */
+function responsesInputFromMessages(msgs) {
+  return (msgs || []).map(function (msg) {
+    const role = msg && msg.role === "assistant" ? "assistant" : "user";
+    const content = msg && msg.content;
 
+    if (Array.isArray(content)) {
+      return {
+        role: role,
+        content: content.map(function (part) {
+          if (!part) return { type: responsesTextType(role), text: "" };
+          if (part.type === "input_text" || part.type === "output_text" || part.type === "input_image") return part;
+          if (part.type === "text") return { type: responsesTextType(role), text: part.text || "" };
+          if (part.type === "image_url") {
+            const imageUrl = typeof part.image_url === "string"
+              ? part.image_url
+              : (part.image_url && part.image_url.url) || "";
+            return { type: "input_image", image_url: imageUrl, detail: "auto" };
+          }
+          return { type: responsesTextType(role), text: part.text || "" };
+        })
+      };
+    }
+
+    return {
+      role: role,
+      content: [{ type: responsesTextType(role), text: String(content == null ? "" : content) }]
+    };
+  });
+}
+
+function responseErrorMessage(data, status) {
+  if (data && data.error) {
+    if (typeof data.error === "string") return data.error;
+    return data.error.message || data.error.code || JSON.stringify(data.error);
+  }
+  if (data && data.message) return data.message;
+  return status || "未知错误";
+}
+
+function extractResponsesText(data) {
+  if (!data || typeof data !== "object") throw new Error("返回内容为空");
+
+  if (data.status === "failed") {
+    throw new Error("Responses 请求失败：" + responseErrorMessage(data, data.status));
+  }
+  if (data.status === "incomplete") {
+    const reason = data.incomplete_details &&
+      (data.incomplete_details.reason || data.incomplete_details.message);
+    throw new Error("Responses 返回不完整" + (reason ? "：" + reason : ""));
+  }
+
+  if (typeof data.output_text === "string" && data.output_text.trim()) {
+    return data.output_text.trim();
+  }
+
+  const pieces = [];
+  const refusals = [];
+  const output = Array.isArray(data.output) ? data.output : [];
+  output.forEach(function (item) {
+    if (!item) return;
+    if (item.type === "output_text" && item.text) pieces.push(item.text);
+    if (item.type !== "message" || !Array.isArray(item.content)) return;
+    item.content.forEach(function (part) {
+      if (!part) return;
+      if (part.type === "output_text" && part.text) pieces.push(part.text);
+      if (part.type === "refusal" && (part.refusal || part.text)) {
+        refusals.push(part.refusal || part.text);
+      }
+    });
+  });
+
+  if (pieces.length) return pieces.join("\n").trim();
+  if (refusals.length) throw new Error("模型拒绝处理此请求：" + refusals.join("\n"));
+  throw new Error("返回内容为空");
+}
+
+async function callLLM(cfg, msgs, systemPrompt) {
+  const url = apiEndpoint(cfg.baseUrl, "responses");
+  if (!url) throw new Error("请填写 Responses API 根地址");
+
+  const sys = systemPrompt || buildSystemPrompt(normalizeTarget(cfg.targetModel), loadKB());
   const body = {
     model: cfg.model,
-    messages: [{ role: "system", content: sys }].concat(msgs),
-    temperature: typeof temperature === "number" ? temperature : 0.7,
-    stream: false
+    instructions: sys,
+    input: responsesInputFromMessages(msgs)
   };
 
   const res = await fetch(url, {
@@ -1126,16 +1209,10 @@ async function callLLM(cfg, msgs, systemPrompt, temperature) {
   catch (e) { throw new Error("返回非 JSON：" + raw.slice(0, 200)); }
 
   if (!res.ok) {
-    const msg = (data && data.error && (data.error.message || data.error.code)) || res.status;
-    throw new Error("API 错误 " + res.status + "：" + msg);
+    throw new Error("API 错误 " + res.status + "：" + responseErrorMessage(data, res.status));
   }
 
-  const text =
-    (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) ||
-    (data.choices && data.choices[0] && data.choices[0].text) || "";
-
-  if (!text) throw new Error("返回内容为空");
-  return text.trim();
+  return extractResponsesText(data);
 }
 
 /* ============================================================

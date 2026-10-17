@@ -9,7 +9,9 @@ const fs = require("fs");
 const path = require("path");
 const { JSDOM } = require("jsdom");
 
-const PLUGIN = "C:/Users/couer/cos-effect-prompt/ps-plugin";
+const PLUGIN = process.argv[2]
+  ? path.resolve(process.argv[2])
+  : path.resolve(__dirname, "..");
 const html = fs.readFileSync(path.join(PLUGIN, "index.html"), "utf8");
 const js = fs.readFileSync(path.join(PLUGIN, "index.js"), "utf8");
 
@@ -20,6 +22,7 @@ function check(name, cond, extra) {
 }
 
 let capturedBody = null;
+let capturedUrl = null;
 let lastSaved = null;
 let opened = null;
 
@@ -33,8 +36,16 @@ styleEl.textContent = css;
 w.document.head.appendChild(styleEl);
 
 w.fetch = function (url, opts) {
-  capturedBody = JSON.parse(opts.body);
-  const payload = { choices: [{ message: { content: '{"id":"f_special_test","title":"测试"}' } }] };
+  capturedUrl = url;
+  capturedBody = opts && opts.body ? JSON.parse(opts.body) : null;
+  const payload = {
+    status: "completed",
+    output: [{
+      type: "message",
+      role: "assistant",
+      content: [{ type: "output_text", text: '{"id":"f_special_test","title":"测试"}' }]
+    }]
+  };
   return Promise.resolve({
     ok: true, status: 200,
     text: function () { return Promise.resolve(JSON.stringify(payload)); }
@@ -90,16 +101,16 @@ check("错误条隐藏", d.getElementById("errBar").classList.contains("hidden")
 check("首屏为配置页", !d.getElementById("viewSetup").classList.contains("hidden"));
 check("复制按钮已移除", d.getElementById("copy") === null);
 
-console.log("\n[2] 服务商预设自动填地址");
-d.querySelector('#providerPreset .opt[data-value="deepseek"]').click();
-check("baseUrl 已自动填入", d.getElementById("baseUrl").value === "https://api.deepseek.com/v1");
-check("model 已自动填入", d.getElementById("model").value === "deepseek-chat");
+console.log("\n[2] OpenAI Responses 预设自动填地址");
+d.querySelector('#providerPreset .opt[data-value="openai"]').click();
+check("baseUrl 已自动填入", d.getElementById("baseUrl").value === "https://api.openai.com/v1");
+check("model 已自动填入", d.getElementById("model").value === "gpt-4.1");
 
 console.log("\n[3] 保存配置进入主界面");
 d.getElementById("apiKey").value = "sk-user-own-key";
 d.getElementById("btnEnter").click();
 check("进入主界面", !d.getElementById("viewMain").classList.contains("hidden"));
-check("摘要显示", d.getElementById("cfgSummary").textContent.indexOf("deepseek-chat") >= 0);
+check("摘要显示", d.getElementById("cfgSummary").textContent.indexOf("gpt-4.1") >= 0);
 
 console.log("\n[4] 知识库");
 d.getElementById("btnKB").click();
@@ -124,10 +135,16 @@ setTimeout(function () {
   check("empty 标记已移除", !view.classList.contains("empty"));
   check("编辑态默认隐藏", ta.classList.contains("hidden"));
 
-  const sys = capturedBody.messages[0].content;
-  check("system prompt 含知识库标题", sys.indexOf("用户知识库") >= 0);
+    check("Responses endpoint 已调用", capturedUrl === "https://api.openai.com/v1/responses", capturedUrl);
+    const sys = capturedBody.instructions;
+    check("Responses 使用 instructions", typeof sys === "string");
+    check("Responses 使用 input 数组", Array.isArray(capturedBody.input));
+    check("用户消息使用 input_text",
+      capturedBody.input[0].content[0].type === "input_text");
+    check("system prompt 含知识库标题", sys.indexOf("用户知识库") >= 0);
   check("system prompt 含知识库正文", sys.indexOf("不要过度磨皮") >= 0);
-  check("system prompt 含技能核心", sys.indexOf("Cosplay 人像后期综合处理师") >= 0);
+    check("system prompt 含技能核心", sys.indexOf("Cosplay 人像后期综合处理师") >= 0);
+    check("响应使用 output_text", d.getElementById("outputView").textContent.indexOf("f_special_test") >= 0);
 
   console.log("\n[5b] 滚动：固定高度 + overflow，翻页按钮改 scrollTop");
   const cs = w.getComputedStyle(view);
@@ -196,7 +213,11 @@ setTimeout(function () {
       d.getElementById("outputView").textContent);
     check("优化框已清空", d.getElementById("refine").value === "");
     check("优化请求带上了修改要求",
-      JSON.stringify(capturedBody.messages).indexOf("改成蓝色") >= 0);
+      JSON.stringify(capturedBody.input).indexOf("改成蓝色") >= 0);
+    check("多轮 assistant 使用 output_text",
+      capturedBody.input.some(function (item) {
+        return item.role === "assistant" && item.content[0].type === "output_text";
+      }));
 
     d.getElementById("btnRevert").click();
     check("撤销回到上一版", d.getElementById("status").textContent.indexOf("撤销") >= 0,
@@ -259,7 +280,7 @@ function testLearn(next) {
   d.getElementById("gen").click();
 
   setTimeout(function () {
-    const sys = capturedBody.messages[0].content;
+    const sys = capturedBody.instructions;
     check("生成请求带上了投喂内容", sys.indexOf("cyberpunk street at night") >= 0);
     check("生成请求带上了范例标题", sys.indexOf("参考范例") >= 0);
 
@@ -275,7 +296,7 @@ function testLearn(next) {
     d.getElementById("gen").click();
 
     setTimeout(function () {
-      const sys2 = capturedBody.messages[0].content;
+      const sys2 = capturedBody.instructions;
       check("关闭后生成请求不再带投喂内容", sys2.indexOf("cyberpunk street at night") < 0);
       check("关闭后知识库仍然生效", sys2.indexOf("不要过度磨皮") >= 0);
 
@@ -319,11 +340,22 @@ function testImg(next) {
     return { w: wm, d: wm.document };
   }
 
-  // --- 情况一：只配了主模型（DeepSeek 这种纯文本），没配视觉模型 ---
+  // --- 情况一：只配主模型，视觉模型三项留空时回落到主配置 ---
+  let fallbackReq = null;
   const a = boot({
-    baseUrl: "https://api.deepseek.com/v1", apiKey: "sk-x", model: "deepseek-chat",
-    targetModel: "nanobanana", exportDir: ""
-  }, function () { throw new Error("不该发起请求"); });
+    baseUrl: "https://api.openai.com/v1", apiKey: "sk-x", model: "gpt-4.1",
+    targetModel: "gptimage", exportDir: ""
+  }, function (url, opts) {
+    fallbackReq = { url: url, body: JSON.parse(opts.body), auth: opts.headers.Authorization };
+    return Promise.resolve({
+      ok: true, status: 200,
+      text: function () {
+        return Promise.resolve(JSON.stringify({
+          output: [{ type: "message", content: [{ type: "output_text", text: '{"id":"f_fallback","title":"回落结果"}' }] }]
+        }));
+      }
+    });
+  });
 
   a.d.getElementById("btnImg").click();
   a.d.getElementById("btnPickImage").click();
@@ -336,67 +368,74 @@ function testImg(next) {
     check("预览区不再是空态", !a.d.getElementById("imgPreview").classList.contains("empty"));
 
     a.d.getElementById("imgGen").click();
-    check("没配视觉模型时给出明确提示",
-      a.d.getElementById("imgStatus").textContent.indexOf("视觉模型") >= 0,
-      a.d.getElementById("imgStatus").textContent);
-
-    // --- 情况二：配了独立视觉模型 → 走通，检查请求体 ---
-    let visionReq = null;
-    const b = boot({
-      baseUrl: "https://api.deepseek.com/v1", apiKey: "sk-x", model: "deepseek-chat",
-      visionBaseUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1",
-      visionApiKey: "sk-vision", visionModel: "qwen-vl-max",
-      targetModel: "nanobanana", exportDir: ""
-    }, function (url, opts) {
-      visionReq = { url: url, body: JSON.parse(opts.body), auth: opts.headers.Authorization };
-      return Promise.resolve({
-        ok: true, status: 200,
-        text: function () {
-          return Promise.resolve(JSON.stringify({
-            choices: [{ message: { content: '{"id":"f_scene_from_image","title":"图生文结果"}' } }]
-          }));
-        }
-      });
-    });
-
-    b.d.getElementById("btnImg").click();
-    b.d.getElementById("btnPickImage").click();
-
     setTimeout(function () {
-      b.d.getElementById("imgPrompt").value = "反推这张图的提示词";
-      b.d.getElementById("imgGen").click();
+      check("视觉配置回落到主地址", fallbackReq && fallbackReq.url === "https://api.openai.com/v1/responses",
+        fallbackReq && fallbackReq.url);
+      check("视觉配置回落到主 Key", fallbackReq && fallbackReq.auth === "Bearer sk-x",
+        fallbackReq && fallbackReq.auth);
+      check("视觉配置回落到主模型", fallbackReq && fallbackReq.body.model === "gpt-4.1",
+        fallbackReq && fallbackReq.body.model);
+      check("回落请求使用 Responses instructions", fallbackReq && typeof fallbackReq.body.instructions === "string");
+      const fallbackContent = fallbackReq && fallbackReq.body.input[0] && fallbackReq.body.input[0].content;
+      check("回落请求含 input_text", Array.isArray(fallbackContent) && fallbackContent[0].type === "input_text");
+      check("回落请求含 input_image", Array.isArray(fallbackContent) && fallbackContent[1].type === "input_image");
+
+      // --- 情况二：独立视觉配置 → 检查 Responses 请求体 ---
+      let visionReq = null;
+      const b = boot({
+        baseUrl: "https://api.openai.com/v1", apiKey: "sk-x", model: "gpt-4.1",
+        visionBaseUrl: "https://proxy.example.com/v1",
+        visionApiKey: "sk-vision", visionModel: "gpt-4o",
+        targetModel: "gptimage", exportDir: ""
+      }, function (url, opts) {
+        visionReq = { url: url, body: JSON.parse(opts.body), auth: opts.headers.Authorization };
+        return Promise.resolve({
+          ok: true, status: 200,
+          text: function () {
+            return Promise.resolve(JSON.stringify({
+              output: [{ type: "message", content: [{ type: "output_text", text: '{"id":"f_scene_from_image","title":"图生文结果"}' }] }]
+            }));
+          }
+        });
+      });
+
+      b.d.getElementById("btnImg").click();
+      b.d.getElementById("btnPickImage").click();
 
       setTimeout(function () {
-        check("图生文用视觉模型的地址", visionReq && visionReq.url.indexOf("dashscope") >= 0,
-          visionReq && visionReq.url);
-        check("图生文用视觉模型的 Key", visionReq && visionReq.auth === "Bearer sk-vision",
-          visionReq && visionReq.auth);
-        check("图生文用视觉模型名", visionReq && visionReq.body.model === "qwen-vl-max",
-          visionReq && visionReq.body.model);
+        b.d.getElementById("imgPrompt").value = "反推这张图的提示词";
+        b.d.getElementById("imgGen").click();
 
-        const msg = visionReq && visionReq.body.messages;
-        const content = msg && msg[1] && msg[1].content;
-        check("消息是视觉数组格式", Array.isArray(content), typeof content);
-        check("含 image_url 且是 data URL",
-          Array.isArray(content) && content[1] && content[1].type === "image_url" &&
-          content[1].image_url.url.indexOf("data:image/jpeg;base64,") === 0,
-          Array.isArray(content) ? JSON.stringify(content[1]).slice(0, 80) : "");
-        check("图片被正确 base64 编码",
-          Array.isArray(content) && content[1].image_url.url.indexOf("data:image/jpeg;base64,/9j/") === 0,
-          Array.isArray(content) ? content[1].image_url.url : "");
-        check("含用户的识图要求",
-          Array.isArray(content) && content[0].text.indexOf("反推这张图") >= 0);
-        check("system prompt 是识图专用",
-          msg && msg[0].content.indexOf("看图反推提示词") >= 0);
-        check("图生文也带上了知识库",
-          msg && msg[0].content.indexOf("写实3DCG") >= 0);
+        setTimeout(function () {
+          check("图生文用视觉模型的 Responses 地址", visionReq && visionReq.url === "https://proxy.example.com/v1/responses",
+            visionReq && visionReq.url);
+          check("图生文用视觉模型的 Key", visionReq && visionReq.auth === "Bearer sk-vision",
+            visionReq && visionReq.auth);
+          check("图生文用视觉模型名", visionReq && visionReq.body.model === "gpt-4o",
+            visionReq && visionReq.body.model);
+          check("system prompt 放在 instructions", visionReq && visionReq.body.instructions.indexOf("看图反推提示词") >= 0);
+          check("图生文带上知识库", visionReq && visionReq.body.instructions.indexOf("写实3DCG") >= 0);
 
-        check("结果写回主界面结果区",
-          b.d.getElementById("outputView").textContent.indexOf("f_scene_from_image") >= 0,
-          b.d.getElementById("outputView").textContent);
-        check("并切回了主界面", !b.d.getElementById("viewMain").classList.contains("hidden"));
+          const msg = visionReq && visionReq.body.input && visionReq.body.input[0];
+          const content = msg && msg.content;
+          check("Responses 消息是视觉数组格式", Array.isArray(content), typeof content);
+          check("含 input_image 且是 data URL",
+            Array.isArray(content) && content[1] && content[1].type === "input_image" &&
+            content[1].image_url.indexOf("data:image/jpeg;base64,") === 0,
+            Array.isArray(content) ? JSON.stringify(content[1]).slice(0, 100) : "");
+          check("图片被正确 base64 编码",
+            Array.isArray(content) && content[1].image_url.indexOf("data:image/jpeg;base64,/9j/") === 0,
+            Array.isArray(content) ? content[1].image_url : "");
+          check("含用户的识图要求",
+            Array.isArray(content) && content[0].type === "input_text" && content[0].text.indexOf("反推这张图") >= 0);
 
-        next();
+          check("结果写回主界面结果区",
+            b.d.getElementById("outputView").textContent.indexOf("f_scene_from_image") >= 0,
+            b.d.getElementById("outputView").textContent);
+          check("并切回了主界面", !b.d.getElementById("viewMain").classList.contains("hidden"));
+
+          next();
+        }, 40);
       }, 40);
     }, 40);
   }, 40);
