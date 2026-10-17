@@ -13,7 +13,7 @@
 ## 条目模板
 
 ### <参考名 / 标签>
-- **来源模型**：MJ / SD / ComfyUI / NovelAI / Nano Banana
+- **来源模型**：MJ / SD / ComfyUI / NovelAI / GPT Image 2.5（旧称 Nano Banana）
 - **用途标签**：如 夜景 / 魔法阵 / 二次元 / 电影感
 - **原文**：
   ```

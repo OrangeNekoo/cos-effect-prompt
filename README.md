@@ -2,12 +2,12 @@
 
 # cos-effect-prompt
 
-**COS 人像后期提示词生成 Skill — 为 Nano Banana (Gemini 图像模型) 生成专业级 JSON 后期指令**
+**COS 人像后期提示词生成 Skill — 为 GPT Image 2.5 (OpenAI 图像模型) 生成专业级 JSON 后期指令**
 
 > 给 COS 照 / 角色照 / 写真加特效、修脸、塑形、做氛围 —— 一句话说需求，输出一份可直接粘贴的成品指令。
 > 给一张照片，还能**反推**出它的后期处理，复现效果、学习别人的修图。
 
-`Nano Banana` `Gemini` `Cosplay` `AI 后期` `提示词`
+`GPT Image 2.5` `OpenAI Responses` `Cosplay` `AI 后期` `提示词`
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 ![Language: Chinese](https://img.shields.io/badge/language-%E4%B8%AD%E6%96%87-blue)
@@ -18,7 +18,7 @@
 
 ## 为什么用它
 
-Nano Banana 是吃**自然语言**的图像模型，但"加个特效"这种模糊说法往往效果随机。这个 Skill 把它变成**专业级的 JSON 指令**：
+GPT Image 2.5 适合接收**具体自然语言**的图像编辑要求，但“加个特效”这种模糊说法往往效果随机。这个 Skill 把它变成**专业级的 JSON 指令**：
 
 - **保底规则先行**—— 构图 / 面部 / 姿势不许动，杜绝"换了一张脸"
 - **按需启用模块**—— 你要什么就生成什么，绝不硬塞无关处理
@@ -26,7 +26,7 @@ Nano Banana 是吃**自然语言**的图像模型，但"加个特效"这种模�
 - **光影一致兜底**—— 所有修改与照片原光源、噪点统一，效果"长在照片里"而不是贴上去
 - **反推模式**—— 给一张照片，反推出它的后期处理（特效/修图/调色），输出可复现指令
 - **风格识别学习**—— 识别照片/描述的风格并输出风格预设；新风格可学入库，越用越懂
-- **多模型适配**—— 先辨别目标模型（ComfyUI / Midjourney / NovelAI / Nano Banana），用最适合的格式输出（tag+权重 / 自然语言+参数 / 信封 JSON）
+- **多模型适配**—— 先辨别目标模型（GPT Image 2.5 / ComfyUI / Midjourney / NovelAI），用最适合的格式输出（tag+权重 / 自然语言+参数 / 信封 JSON）
 - **参考提示词库**—— 把喜欢的参考提示词存进库，泛化分析提炼可复用要素，生成时自动参考优化
 - **画笔引导**—— 照片上画红色箭头/轨迹指定风、发丝、裙摆飘动的方向，提示词自动引用
 - **电影风格仿制**—— 王家卫 / 银翼杀手 / 复古胶片 / 新海诚等电影风格，注入调色与光影
@@ -34,7 +34,7 @@ Nano Banana 是吃**自然语言**的图像模型，但"加个特效"这种模�
 - **大师电影感构图库**—— 15 种大师级构图（单点透视 / 三分法 / 黄金分割 / 剪影逆光 / 广角史诗 / 水面镜像…），按场景自动选配
 - **ComfyUI 进阶**—— ControlNet（姿势/深度/线稿控制）与 LoRA / Embedding 写法
 
-把照片和指令一起交给 Nano Banana，得到的是**稳定、可控、可复现**的高质量后期。
+把照片和指令一起交给 GPT Image 2.5，得到的是**稳定、可控、可复现**的高质量后期。
 
 ---
 
@@ -65,9 +65,9 @@ Nano Banana 是吃**自然语言**的图像模型，但"加个特效"这种模�
    > "修脸自然点，头发加点亮晶晶的"
    > "背景换成赛博朋克夜景，冷色调，下点雨"
 2. **复制指令**—— agent 输出完整 JSON 指令，直接复制。
-3. **粘贴出图**—— 打开 Nano Banana，上传你的照片，把 JSON 粘贴进去发送。
+3. **提交到 GPT Image 2.5**——上传你的照片，把 JSON 的 `content` 与原图一起交给图像模型。
 
-> **想看效果再细化**？在 Nano Banana 里追加一句"把魔法阵调更华丽，其余不变"即可迭代，无需重新生成整套 JSON。
+> **想看效果再细化**？在 GPT Image 2.5 的编辑请求里追加一句"把魔法阵调更华丽，其余不变"即可迭代，无需重新生成整套 JSON。
 
 **完整示例**—— 你说：
 
@@ -141,7 +141,7 @@ Skill 输出：
 }
 ```
 
-- `content`：完整指令 JSON（转义字符串），解包后可直接粘贴 Nano Banana
+- `content`：完整指令 JSON（转义字符串），解包后可与原图一起提交 GPT Image 2.5
 - `params`：**可调参数控件**（特效强度 / 风格权重 / 光影融入），插件可渲染滑块，默认值已烘焙进 content
 - `category`：英文分类（`special` / `face` / `hair` / `clothing` / `body` / `wind` / `scene` / `color` / `background` / `lighting`）
 - `id` / `title`：语义化建议值，导入插件后可自行修改
@@ -151,7 +151,7 @@ Skill 输出：
 ## 设计理念
 
 ### 1. 保底规则永远在场
-`base_rules` + `constraints` 把"什么不许动"写成显式规则。Nano Banana 对"保持不变的指令"响应特别好，这是防止人物画崩的关键。
+`base_rules` + `constraints` 把"什么不许动"写成显式规则。GPT Image 2.5 对"保持不变的指令"响应特别好，这是防止人物画崩的关键。
 
 ### 2. 按需启用，拒绝堆砌
 六个模块，用户提了才启用。要修脸就不会误加火焰，要特效就不会乱塑形。
@@ -211,9 +211,9 @@ git clone https://github.com/Couer869/cos-effect-prompt.git
 
 ## Photoshop 插件
 
-`ps-plugin/` 是配套的 **Photoshop UXP 插件**：在 PS 面板里填**你自己的 OpenAI 兼容 API**（DeepSeek / 通义 / Kimi / 智谱 / OpenAI…），直接生成提示词。
+`ps-plugin/` 是配套的 **Photoshop UXP 插件**：在 PS 面板里填**你自己的 OpenAI Responses API**（可填写任意兼容 Responses 的根地址、Key 和驱动模型名），直接生成适用于 GPT Image 2.5 的提示词。
 
-- 支持四种输出格式（Nano Banana 信封 / MJ / ComfyUI / NovelAI）
+- 支持四种输出格式（GPT Image 2.5 信封 / MJ / ComfyUI / NovelAI）
 - 历史记录（最近 30 条，点击载回）
 - 一键导出到你指定的目录
 - 内置本 Skill 的完整知识作为 system prompt
@@ -239,13 +239,14 @@ cos-effect-prompt/
     ├── midjourney.md             # MJ 提示词指南（框架 / 参数 / 模板 / 大师构图库）
     ├── mj-style.md               # MJ 风格措辞 + 识别维度
     ├── cinema-styles.md          # 电影风格仿制（10 种）
-    ├── models.md                 # 多模型适配（ComfyUI/SD/MJ/NovelAI + ControlNet/LoRA）
+    ├── models.md                 # 多模型适配（GPT Image 2.5/ComfyUI/SD/MJ/NovelAI）
+    ├── gpt-image.md              # GPT Image 2.5 编辑原则与 Responses API 边界
     ├── fallback.md               # 泛化模块 + 反推示例
     ├── styles-learned.md         # 已学风格库
     ├── user-prompts.md           # 用户参考提示词库
     ├── preset-envelope.json      # 插件预设信封示例
     ├── template.json             # 指令骨架 + 参数控件
-    └── nano-banana.md            # Nano Banana 编辑原理 + 透视/摄影术语
+    └── nano-banana.md            # 历史兼容：Nano Banana 编辑原理与摄影术语
 ```
 
 ---
@@ -253,19 +254,19 @@ cos-effect-prompt/
 ## 常见问题
 
 **Q：和 Stable Diffusion 的提示词有什么不同？**
-SD 用逗号 tag，Nano Banana 吃自然语言。本 Skill 的 JSON 是给 Nano Banana 的，不要混用到 SD。
+GPT Image 2.5 与 Nano Banana 都适合自然语言编辑，ComfyUI/SD 使用逗号 tag。本 Skill 的 JSON 是给 GPT Image 2.5 的结构化编辑指令，不要混用到 SD。
 
 **Q：为什么是 JSON，而不是一段话？**
 JSON 无歧义：保底规则、处理模块、约束分离，模型更容易"照做不越界"，输出也更稳定可复现。
 
 **Q：效果不理想怎么办？**
-Skill 每条指令都自带迭代接口——对 Nano Banana 追加"把火焰调猛烈些，其余不变"即可，无需重新生成整套 JSON。
+Skill 每条指令都自带迭代接口——对 GPT Image 2.5 追加“把火焰调猛烈些，其余不变”即可，无需重新生成整套 JSON。
 
 **Q：想要写实实拍 / 二次元手绘风格的特效？**
 直接告诉 agent（如"特效要写实实拍风"），Skill 会用对应风格覆盖默认的 CG 质感。
 
 **Q：指令里的中文直接粘贴吗？**
-是的。Nano Banana 支持中文，JSON 值均为可直接使用的专业中文描述。
+是的。GPT Image 2.5 支持中文，JSON 值均为可直接使用的专业中文描述。
 
 ---
 

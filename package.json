@@ -1,0 +1,11 @@
+{
+  "name": "cos-effect-prompt",
+  "private": true,
+  "description": "COS image editing prompt skill and Photoshop UXP plugin",
+  "scripts": {
+    "test:plugin": "node ps-plugin/web-test/smoke.js"
+  },
+  "devDependencies": {
+    "jsdom": "^26.1.0"
+  }
+}

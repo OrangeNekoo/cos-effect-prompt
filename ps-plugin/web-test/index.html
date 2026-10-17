@@ -119,24 +119,17 @@
       <section class="card">
         <label class="lbl">服务商预设（点一个自动填入）</label>
         <div id="providerPreset" class="opt-list">
-          <div class="opt" data-value="deepseek">DeepSeek</div>
-          <div class="opt" data-value="qwen">通义千问</div>
-          <div class="opt" data-value="kimi">Kimi</div>
-          <div class="opt" data-value="zhipu">智谱 GLM</div>
-          <div class="opt" data-value="siliconflow">硅基流动</div>
-          <div class="opt" data-value="minimax">MiniMax</div>
           <div class="opt" data-value="openai">OpenAI</div>
-          <div class="opt" data-value="openrouter">OpenRouter</div>
           <div class="opt" data-value="custom">自定义</div>
         </div>
 
-        <label class="lbl">接口地址（Base URL）</label>
-        <input id="baseUrl" class="inp" placeholder="https://api.deepseek.com/v1" />
+        <label class="lbl">Responses API 根地址</label>
+        <input id="baseUrl" class="inp" placeholder="https://api.openai.com/v1" />
 
         <label class="lbl">API Key</label>
         <input id="apiKey" class="inp" type="password" placeholder="sk-..." />
 
-        <label class="lbl">模型名</label>
+        <label class="lbl">Responses 驱动模型名</label>
         <div class="field-row">
           <input id="model" class="inp" placeholder="填好 API Key 后自动拉取" />
           <button id="btnFetchModels" class="btn btn-sm">拉取模型</button>
@@ -146,7 +139,7 @@
 
         <label class="lbl">默认输出格式</label>
         <div id="targetModel" class="opt-list">
-          <div class="opt active" data-value="nanobanana">Nano Banana</div>
+          <div class="opt active" data-value="gptimage">GPT Image 2.5</div>
           <div class="opt" data-value="midjourney">Midjourney</div>
           <div class="opt" data-value="comfyui">ComfyUI / SD</div>
           <div class="opt" data-value="novelai">NovelAI</div>
@@ -172,8 +165,8 @@
           <span>视觉模型（图生文用，可选）</span>
         </div>
         <div class="hint" style="margin-top:0">
-          只有能「看图」的模型才能做图生文（qwen-vl-max、glm-4v-plus、gpt-4o、Qwen2.5-VL 等）。
-          三项都留空 = 复用上面的主配置（仅当主模型本身支持视觉时才可行）。
+          只有支持 Responses 图片输入的视觉模型才能做图生文（如 GPT-4.1、GPT-4o 等，具体以你的 API 服务商为准）。
+          三项都留空 = 复用上面的主配置（仅当主模型本身支持视觉输入时才可行）。
         </div>
 
         <label class="lbl">视觉接口地址</label>
@@ -184,7 +177,7 @@
 
         <label class="lbl">视觉模型名</label>
         <div class="field-row">
-          <input id="visionModel" class="inp" placeholder="如 qwen-vl-max / glm-4v-plus" />
+          <input id="visionModel" class="inp" placeholder="如 gpt-4.1 / gpt-4o" />
           <button id="btnFetchVisionModels" class="btn btn-sm">拉取模型</button>
         </div>
         <div id="visionModelList" class="opt-list opt-scroll hidden"></div>
@@ -235,7 +228,7 @@
       <section class="card">
         <label class="lbl">输出格式</label>
         <div id="targetModelMain" class="opt-list">
-          <div class="opt active" data-value="nanobanana">Nano Banana</div>
+          <div class="opt active" data-value="gptimage">GPT Image 2.5</div>
           <div class="opt" data-value="midjourney">Midjourney</div>
           <div class="opt" data-value="comfyui">ComfyUI / SD</div>
           <div class="opt" data-value="novelai">NovelAI</div>
@@ -404,7 +397,7 @@
 
         <label class="lbl">输出格式</label>
         <div id="targetModelImg" class="opt-list">
-          <div class="opt active" data-value="nanobanana">Nano Banana</div>
+          <div class="opt active" data-value="gptimage">GPT Image 2.5</div>
           <div class="opt" data-value="midjourney">Midjourney</div>
           <div class="opt" data-value="comfyui">ComfyUI / SD</div>
           <div class="opt" data-value="novelai">NovelAI</div>
@@ -417,9 +410,9 @@
 
         <div class="notice">
           <div class="notice-title">需要视觉模型</div>
-          <div>· 只有能「看图」的模型可用（qwen-vl-max、glm-4v-plus、gpt-4o、Qwen2.5-VL…）</div>
+          <div>· 只有支持 Responses 图片输入的视觉模型可用（如 GPT-4.1、GPT-4o，具体以你的服务商为准）</div>
           <div>· 在「设置 → 视觉模型」里可单独配一套地址 / Key / 模型名；留空则用主配置</div>
-          <div>· DeepSeek 等纯文本模型不支持看图，会直接报错</div>
+          <div>· 不支持 Responses 图片输入的纯文本模型不能做图生文，会直接报错</div>
           <div>· 结果会写回主界面的结果区，可以直接继续优化、导出</div>
         </div>
       </section>

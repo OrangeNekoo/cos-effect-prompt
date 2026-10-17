@@ -1,6 +1,6 @@
 # COS 后期提示词生成器 — Photoshop 插件（UXP）
 
-在 Photoshop 面板里填**你自己的 API**，直接生成专业后期提示词——内置 `cos-effect-prompt` 技能的完整知识（默认写实 3DCG、大师电影构图、44 种特效、多模型输出格式、EVA 约定等）。
+在 Photoshop 面板里填**你自己的 OpenAI Responses API**，直接生成适用于 GPT Image 2.5 的专业后期提示词——内置 `cos-effect-prompt` 技能的完整知识。
 
 ## 环境要求
 
@@ -48,34 +48,32 @@ UXP 插件可直接放进 Photoshop 安装目录的 `Plug-ins\` 下，PS 启动�
 
 ## 配置 API
 
-首次打开面板会停在**配置页**。点一个**服务商预设**（DeepSeek / 通义千问 / Kimi / 智谱 / 硅基流动 / MiniMax / OpenAI / OpenRouter / 自定义）会自动填入接口地址和常用模型名，你只需补上自己的 API Key：
+首次打开面板会停在**配置页**。点 **OpenAI** 或 **自定义** 预设会自动填入 Responses API 根地址和驱动模型示例，你也可以完全手动填写 URL、Key 和模型名：
 
 | 字段 | 说明 | 示例 |
 |---|---|---|
-| **Base URL** | OpenAI 兼容接口地址（选预设后自动填） | `https://api.deepseek.com/v1` |
+| **Responses API 根地址** | API 根地址，插件自动请求 `/responses` 和 `/models` | `https://api.openai.com/v1` |
 | **API Key** | 你的密钥（**必填，插件不内置任何 Key**） | `sk-xxxxxxxx` |
-| **模型名** | 点「拉取模型」自动从 API 获取列表后点选，也可手填 | `deepseek-chat` |
+| **Responses 驱动模型名** | 用于生成提示词的文本/视觉模型，可拉取或手填 | `gpt-4.1` |
 
 填好后点 **保存并进入 →**。配置只存本机，**下次打开直接进主界面**；要改点右上角 **设置**。
 
-### 常见服务商填写参考
+### Responses API 配置示例
 
-| 服务商 | Base URL | 模型名示例 |
-|---|---|---|
-| DeepSeek | `https://api.deepseek.com/v1` | `deepseek-chat` |
-| 通义千问 | `https://dashscope.aliyuncs.com/compatible-mode/v1` | `qwen-plus` |
-| Kimi / Moonshot | `https://api.moonshot.cn/v1` | `moonshot-v1-8k` |
-| 智谱 GLM | `https://open.bigmodel.cn/api/paas/v4` | `glm-4-plus` |
-| 硅基流动 | `https://api.siliconflow.cn/v1` | `deepseek-ai/DeepSeek-V3` |
-| OpenAI | `https://api.openai.com/v1` | `gpt-4o` |
-| OpenRouter | `https://openrouter.ai/api/v1` | `openai/gpt-4o` |
+| 项目 | 示例 |
+|---|---|
+| API 根地址 | `https://api.openai.com/v1` |
+| 驱动模型 | `gpt-4.1`（用于生成提示词；不要把 `gpt-image-2.5-*` 当作顶层对话模型） |
+| GPT Image 2.5 目标 | 由输出的 `gptimage` 预设描述，最终把原图和 `content` 提交给图像模型 |
+
+插件会自动请求 `POST <根地址>/responses`，把系统规则放入 `instructions`，把多轮文本放入 `input`。图生文使用 `input_text` + `input_image`。
 
 > ⚠️ **安全**：Key 只保存在你本机（插件 localStorage），不会上传到任何第三方。**切勿**把带 Key 的配置分享给他人。
 
 ## 使用
 
-1. 选择**目标模型**（决定输出格式）：
-   - Nano Banana → 插件预设信封 JSON（可直接导入插件）
+1. 选择**目标提示词格式**（决定输出格式）：
+   - GPT Image 2.5 → GPT Image 2.5 插件预设信封 JSON
    - Midjourney → 自然语言 + 参数
    - ComfyUI / SD → tag + 权重 + 负向 + 参数
    - NovelAI → Danbooru 标签
@@ -159,9 +157,9 @@ UXP 插件可直接放进 Photoshop 安装目录的 `Plug-ins\` 下，PS 启动�
 
 | 能用 | 不能用 |
 |---|---|
-| qwen-vl-max、glm-4v-plus、gpt-4o、Qwen2.5-VL、Claude 系列 | DeepSeek、Kimi、纯文本的 Qwen / GLM |
+| 支持 Responses 图片输入的视觉模型 | 不支持图片输入的纯文本模型 |
 
-在 **设置 → 视觉模型（图生文用，可选）** 里可以**单独配一套地址 / Key / 模型名**，和主模型互不影响——比如主模型用 DeepSeek 写提示词，视觉模型单独用通义千问看图。三项都留空则复用主配置。
+在 **设置 → 视觉模型（图生文用，可选）** 里可以**单独配一套根地址 / Key / 模型名**，和主模型互不影响。三项都留空则复用主配置。
 
 > 图片会以 base64 编码随请求发往**你配置的那个接口**。超过 6MB 会提示先压缩（base64 后体积还要再涨约 1/3，多数接口会拒收大图）。
 
@@ -177,8 +175,8 @@ UXP 插件可直接放进 Photoshop 安装目录的 `Plug-ins\` 下，PS 启动�
 
 在「API 与导出设置」里填 **导出目录**（如 `C:/Users/你的用户名/Downloads`），之后点 **导出到目录** 就会**无弹窗直接写入**：
 
-- 文件名自动生成：Nano Banana 用预设的 `id`（如 `f_special_gold-magic-circle.json`），其他模型用 `模型名-时间戳`
-- **留空**则退回到"另存为"弹窗
+- 文件名自动生成：GPT Image 2.5 用预设的 `id`（如 `f_special_gold-magic-circle.json`），其他模型用 `模型名-时间戳`
+- **留空**则退回到“另存为”弹窗
 
 ### 其他
 
@@ -188,7 +186,7 @@ UXP 插件可直接放进 Photoshop 安装目录的 `Plug-ins\` 下，PS 启动�
 
 ### 换用其他服务商
 
-本插件 `manifest.json` 中声明的是 `"network": { "domains": "all" }`——**不限制域名**，因此任意 OpenAI 兼容服务商都可直接填写，无需改配置。
+本插件使用 Responses API 协议。`manifest.json` 中声明的是 `"network": { "domains": "all" }`，因此任意兼容 Responses API 的服务商或代理都可直接填写根地址，无需改配置。插件当前生成提示词，不直接调用 `image_generation` 工具、不下载图片、不写入 Photoshop 图层。
 
 ### 调整内置知识
 
@@ -207,7 +205,7 @@ UXP 插件可直接放进 Photoshop 安装目录的 `Plug-ins\` 下，PS 启动�
 | 知识库同样只存本机 | 知识库文本存于 `localStorage`（键名 `cos_effect_prompt_kb_v1`），仅随你的请求发往你自己配置的接口 |
 | 学习库同样只存本机 | 投喂的提示词存于 `localStorage`（键名 `cos_effect_prompt_learn_v1`），同样只发往你自己配置的接口 |
 | 图片只发给你的视觉接口 | 图生文的图片以 base64 编码后，**只发往你在「设置 → 视觉模型」里配置的地址**；不在本地留副本、不写入历史记录（历史里只记文件名） |
-| 只发指定地址 | Key 仅在 `Authorization` 头中发往用户配置的 `baseUrl`，无任何其他网络请求。全代码只有 2 处 `fetch`：拉取模型列表、发起对话 |
+| 只发指定地址 | Key 仅在 `Authorization` 头中发往用户配置的 `baseUrl`，请求路径为其 `/models` 或 `/responses`，无其他网络请求。全代码只有 2 处 `fetch`：拉取模型列表、发起 Responses 请求 |
 | 外链只有两个且写死 | 仅 `shell.openExternal` 打开 GitHub 仓库和作者抖音主页两个常量地址，不接受任何动态 URL |
 | 不外泄到产物 | 历史记录只存「时间/目标模型/需求/结果」，**不含 Key**；导出文件同样不含 Key |
 | 无埋点 | 无任何 analytics / telemetry / 上报请求 |
@@ -218,7 +216,7 @@ UXP 插件可直接放进 Photoshop 安装目录的 `Plug-ins\` 下，PS 启动�
 # 1. 确认无硬编码凭据（应无输出）
 grep -rniE 'sk-[a-z0-9]{10,}|api[_-]?key\s*[:=]\s*["'"'"'][^"'"'"']{8,}' .
 
-# 2. 确认只有一个网络请求点（应只有一处 fetch，地址来自用户配置）
+# 2. 确认只有两个网络请求点（/models 与 /responses）
 grep -n "fetch(" index.js
 
 # 3. 确认无上报埋点（应无输出）
@@ -244,7 +242,7 @@ MIT — 与主项目 `cos-effect-prompt` 一致。
 
 ## 开发自测
 
-`web-test/smoke.js` 用 jsdom 加载真实的 `index.html` + `index.js` + `styles.css`，覆盖 86 项断言：
+`web-test/smoke.js` 用 jsdom 加载真实的 `index.html` + `index.js` + `styles.css`，覆盖 Responses API 请求体、视觉输入、回落配置、编辑/导出和历史行为断言：
 
 - 初始化、服务商预设自动填地址、配置持久化
 - 知识库存取与注入、学习库投喂 / 开关联动 / 删除
@@ -254,8 +252,9 @@ MIT — 与主项目 `cos-effect-prompt` 一致。
 - 开源说明卡片与 `shell.openExternal` 外链调用
 
 ```bash
-npm i jsdom --registry https://registry.npmmirror.com
-node web-test/smoke.js
+npm install
+npm run test:plugin
+# 或：node web-test/smoke.js
 ```
 
 改动 `index.js` 后建议先跑一遍再去 PS 里试。

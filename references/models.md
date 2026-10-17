@@ -6,14 +6,38 @@
 
 | 模型 | 识别关键词（用户怎么说） | 输出格式 |
 |---|---|---|
-| **Nano Banana**（默认） | 没提模型 / Nano Banana / 香蕉 / Gemini 图像 | 插件预设信封（JSON，见 SKILL.md） |
+| **GPT Image 2.5**（默认） | 没提模型 / GPT Image 2.5 / GPT Image / OpenAI 图像模型 / Nano Banana / 香蕉 / Gemini 图像 | GPT Image 2.5 插件预设信封（JSON，见 SKILL.md） |
 | **ComfyUI / Stable Diffusion** | comfyui / comfy / stable diffusion / SD / WebUI / A1111 / 采样器 / CFG / 步数 / LoRA / 负面提示词 / checkpoint / 负面词 | SD 风格：正向 tag + 负向 tag + 参数 |
 | **Midjourney** | mj / midjourney / --ar / --v / --stylize / --sref / MJ 风格 | 自然语言 + `--参数` |
 | **NovelAI** | novelai / nagi / danbooru / 二次元 tag / 标签 | Danbooru 标签（逗号分隔） |
 
-**默认**：用户没说模型 → 一律按 Nano Banana 信封格式。
+**默认**：用户没说模型 → 一律按 GPT Image 2.5 预设信封格式。Nano Banana/Gemini 是旧版兼容称呼，遇到这些词仍按 GPT Image 2.5 的自然语言编辑规则输出。
 
-## 二、ComfyUI / Stable Diffusion 输出格式
+## 二、GPT Image 2.5 输出格式与编辑规则
+
+GPT Image 2.5 适合“原图 + 具体编辑要求”的自然语言指令。优先描述可观察的目标结果，并明确保持人物身份、构图、姿势、服装版型、透视和原始光线。不要把 ComfyUI 的采样器、CFG、LoRA 或负面词表混入 GPT Image 提示词。
+
+插件默认输出的信封结构仍是 `id/title/content/params/category`，其中 `content` 是结构化编辑指令的 JSON 字符串。使用时把 `content` 与原图一起提交给图像模型；信封本身不是 Responses API 请求体。
+
+推荐的 GPT Image 2.5 编辑提示词包含：
+
+- **目标动作**：添加、移除、替换或重塑什么。
+- **作用区域**：明确位置、范围和前景/中景/背景关系。
+- **视觉结果**：颜色、材质、边缘、透明度、运动方向和细节。
+- **一致性约束**：保持面部、姿势、服装身份、镜头和透视不变。
+- **融合要求**：新元素的光影、反射、景深、噪点与原图一致。
+
+### Responses API 的接口边界
+
+插件的 Photoshop 版本通过用户填写的 **Responses API 根地址、API Key 和驱动模型名**调用文本/视觉模型来生成这份提示词。请求使用 `POST <根地址>/responses`，系统规则放在 `instructions`，文字历史放在 `input`，图片输入使用 `input_image`。GPT Image 2.5 是提示词的目标图像模型，不是本插件默认请求的顶层驱动模型；本插件当前不直接调用 `image_generation` 工具或把生成图片写回 Photoshop。
+
+### GPT Image 2.5 示例
+
+```text
+编辑这张 COS 人像照片：只在人物脚下地面添加一个金色发光魔法阵。魔法阵贴合地面原有透视，近处略宽、远处略窄，符文清晰但不过曝；金色光线自然反射到鞋面和腿部。保持人物的脸、发型、服装、动作、构图和背景不变，不要残留编辑标记。
+```
+
+## 三、ComfyUI / Stable Diffusion 输出格式
 
 ```json
 {
@@ -121,9 +145,9 @@ Danbooru 标签（逗号分隔），加权重：
 
 1. 用户**明说模型** → 直接用该模型
 2. 用户**没说** → 找术语暗示（采样器/CFG/步数/LoRA → ComfyUI；--ar/--v → MJ；tag/标签 → NovelAI）
-3. **都没有** → 默认 Nano Banana
+3. **都没有** → 默认 GPT Image 2.5
 
-辨别后有疑问 → 问一次："这条提示词是给 ComfyUI / Midjourney / NovelAI 还是 Nano Banana？"
+辨别后有疑问 → 问一次："这条提示词是给 GPT Image 2.5 / ComfyUI / Midjourney / NovelAI 哪个模型？"
 
 ## 六、画笔引导在各模型的表达
 
@@ -131,7 +155,7 @@ Danbooru 标签（逗号分隔），加权重：
 
 | 模型 | 能否看到红笔标注 | 表达方式 |
 |---|---|---|
-| **Nano Banana** | ✅ 能看到照片 + 标注 | 直接引用："以照片中红色箭头方向为基准"（见 SKILL.md 画笔引导章节） |
+| **GPT Image 2.5** | ✅ Responses 图片输入可携带原图与标注 | 直接引用："以照片中红色箭头方向为基准"（见 SKILL.md 画笔引导章节） |
 | **ComfyUI / SD** | ❌ 通常看不到 | 用 tag / 描述词表达方向与动态 |
 | **Midjourney** | ❌ | 自然语言描述方向 |
 | **NovelAI** | ❌ | 方向性标签 + 动态描述 |
