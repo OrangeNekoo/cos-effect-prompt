@@ -272,7 +272,7 @@ Skill 每条指令都自带迭代接口——对 GPT Image 2.5 追加“把火�
 
 ## 反馈与贡献
 
-用得不顺手？有想加的特效 / 模块？欢迎提 [Issue](https://github.com/Couer869/cos-effect-prompt/issues) 或直接改进后提交 PR。
+用得不顺手？有想加的特效 / 模块？欢迎提 [Issue](https://github.com/OrangeNekoo/cos-effect-prompt/issues) 或直接改进后提交 PR。
 
 ---
 
